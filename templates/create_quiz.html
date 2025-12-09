@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Quiz - Kahoot-ish</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+        }
+
+        .navbar {
+            background: #667eea;
+            color: white;
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .navbar h1 {
+            font-size: 1.5em;
+        }
+
+        .navbar a {
+            color: white;
+            text-decoration: none;
+            opacity: 0.9;
+            transition: opacity 0.3s;
+        }
+
+        .navbar a:hover {
+            opacity: 1;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        .quiz-info-section {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .quiz-info-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+
+        input:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .questions-section {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .questions-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .question-card {
+            background: #f9f9f9;
+            padding: 25px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .question-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .question-number {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 1.1em;
+        }
+
+        .btn-remove {
+            background: #f44336;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: background 0.3s;
+        }
+
+        .btn-remove:hover {
+            background: #da190b;
+        }
+
+        .answer-options {
+            margin-top: 15px;
+        }
+
+        .answer-item {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+
+        .answer-item input[type="text"] {
+            flex: 1;
+        }
+
+        .answer-item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .answer-item label {
+            margin: 0;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .btn-remove-answer {
+            background: #ff9800;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.85em;
+        }
+
+        .question-settings {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-secondary {
+            background: #4caf50;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #45a049;
+        }
+
+        .btn-outline {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .btn-outline:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: space-between;
+            margin-top: 30px;
+        }
+
+        .message {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .message.success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #66bb6a;
+        }
+
+        .message.error {
+            background: #ffebee;
+            color: #c62828;
+            border: 1px solid #ef5350;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .small-text {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <h1>📝 Create Quiz</h1>
+        <a href="/admin/dashboard">← Back to Dashboard</a>
+    </div>
+
+    <div class="container">
+        <div id="message" class="message"></div>
+
+        <!-- Quiz Info Section -->
+        <div class="quiz-info-section">
+            <h2>Quiz Information</h2>
+            <div class="form-group">
+                <label for="quiz-title">Quiz Title *</label>
+                <input type="text" id="quiz-title" placeholder="e.g., General Knowledge Quiz" required>
+            </div>
+            <div class="form-group">
+                <label for="quiz-description">Description (Optional)</label>
+                <textarea id="quiz-description" placeholder="Brief description of your quiz..."></textarea>
+            </div>
+        </div>
+
+        <!-- Questions Section -->
+        <div class="questions-section">
+            <h2>Questions</h2>
+            <div id="questions-container">
+                <div class="empty-state">
+                    <p>No questions yet. Click "Add Question" to start building your quiz!</p>
+                </div>
+            </div>
+            
+            <button class="btn btn-outline" onclick="addQuestion()" style="width: 100%; margin-top: 20px;">
+                + Add Question
+            </button>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+            <button class="btn btn-outline" onclick="window.location.href='/admin/dashboard'">
+                Cancel
+            </button>
+            <button class="btn btn-secondary" onclick="saveQuiz()">
+                Save Quiz
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let questionCount = 0;
+        const questions = [];
+        let editingQuizId = null;
+
+        // Check if admin is logged in
+        const adminId = localStorage.getItem('admin_id');
+        if (!adminId) {
+            window.location.href = '/admin/login';
+        }
+
+        // Check if editing an existing quiz
+        const urlParams = new URLSearchParams(window.location.search);
+        editingQuizId = urlParams.get('quiz_id');
+
+        // Load existing quiz if editing
+        if (editingQuizId) {
+            loadExistingQuiz(parseInt(editingQuizId));
+        }
+
+        async function loadExistingQuiz(quizId) {
+            try {
+                const response = await fetch(`/api/quiz/${quizId}?admin_id=${adminId}`);
+                
+                if (response.status === 403) {
+                    showMessage('You do not have permission to edit this quiz', 'error');
+                    setTimeout(() => {
+                        window.location.href = '/admin/dashboard';
+                    }, 2000);
+                    return;
+                }
+
+                if (!response.ok) {
+                    showMessage('Failed to load quiz', 'error');
+                    return;
+                }
+
+                const quizData = await response.json();
+
+                // Load quiz info
+                document.getElementById('quiz-title').value = quizData.title;
+                document.getElementById('quiz-description').value = quizData.description || '';
+
+                // Load questions
+                const questionsContainer = document.getElementById('questions-container');
+                questionsContainer.innerHTML = '';
+
+                quizData.questions.forEach((question, index) => {
+                    questionCount++;
+                    const questionId = `q${questionCount}`;
+                    
+                    questions.push({
+                        id: questionId,
+                        order: index + 1,
+                        question_id: question.question_id
+                    });
+
+                    const questionCard = document.createElement('div');
+                    questionCard.className = 'question-card';
+                    questionCard.id = questionId;
+                    
+                    let answersHTML = '';
+                    question.answers.forEach((answer, answerIndex) => {
+                        answersHTML += `
+                            <div class="answer-item">
+                                <input type="text" class="answer-text" placeholder="Answer ${answerIndex + 1}" value="${answer.answer_text}" required>
+                                <input type="checkbox" class="answer-correct" id="${questionId}-a${answerIndex + 1}" ${answer.is_correct ? 'checked' : ''}>
+                                <label for="${questionId}-a${answerIndex + 1}">Correct</label>
+                            </div>
+                        `;
+                    });
+
+                    questionCard.innerHTML = `
+                        <div class="question-header">
+                            <span class="question-number">Question ${index + 1}</span>
+                            <button class="btn-remove" onclick="removeQuestion('${questionId}')">Remove</button>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Question Text *</label>
+                            <input type="text" class="question-text" placeholder="Enter your question..." value="${question.question_text}" required>
+                        </div>
+
+                        <div class="answer-options">
+                            <label>Answer Options *</label>
+                            <div class="answers-list">
+                                ${answersHTML}
+                            </div>
+                            <p class="small-text">Check the box next to the correct answer(s)</p>
+                        </div>
+
+                        <div class="question-settings">
+                            <div class="form-group">
+                                <label>Time Limit (seconds)</label>
+                                <input type="number" class="time-limit" value="${question.time_limit}" min="5" max="120">
+                            </div>
+                            <div class="form-group">
+                                <label>Points</label>
+                                <input type="number" class="points" value="${question.points}" min="10" max="1000" step="10">
+                            </div>
+                        </div>
+                    `;
+
+                    questionsContainer.appendChild(questionCard);
+                });
+
+            } catch (error) {
+                console.error('Error loading quiz:', error);
+                showMessage('Error loading quiz data', 'error');
+            }
+        }
+
+        function addQuestion() {
+            questionCount++;
+            const questionId = `q${questionCount}`;
+            
+            questions.push({
+                id: questionId,
+                order: questionCount
+            });
+
+            const questionsContainer = document.getElementById('questions-container');
+            
+            // Remove empty state if it exists
+            const emptyState = questionsContainer.querySelector('.empty-state');
+            if (emptyState) {
+                emptyState.remove();
+            }
+
+            const questionCard = document.createElement('div');
+            questionCard.className = 'question-card';
+            questionCard.id = questionId;
+            questionCard.innerHTML = `
+                <div class="question-header">
+                    <span class="question-number">Question ${document.querySelectorAll('.question-card').length + 1}</span>
+                    <button class="btn-remove" onclick="removeQuestion('${questionId}')">Remove</button>
+                </div>
+
+                <div class="form-group">
+                    <label>Question Text *</label>
+                    <input type="text" class="question-text" placeholder="Enter your question..." required>
+                </div>
+
+                <div class="answer-options">
+                    <label>Answer Options *</label>
+                    <div class="answers-list">
+                        <div class="answer-item">
+                            <input type="text" class="answer-text" placeholder="Answer 1" required>
+                            <input type="checkbox" class="answer-correct" id="${questionId}-a1">
+                            <label for="${questionId}-a1">Correct</label>
+                        </div>
+                        <div class="answer-item">
+                            <input type="text" class="answer-text" placeholder="Answer 2" required>
+                            <input type="checkbox" class="answer-correct" id="${questionId}-a2">
+                            <label for="${questionId}-a2">Correct</label>
+                        </div>
+                        <div class="answer-item">
+                            <input type="text" class="answer-text" placeholder="Answer 3" required>
+                            <input type="checkbox" class="answer-correct" id="${questionId}-a3">
+                            <label for="${questionId}-a3">Correct</label>
+                        </div>
+                        <div class="answer-item">
+                            <input type="text" class="answer-text" placeholder="Answer 4" required>
+                            <input type="checkbox" class="answer-correct" id="${questionId}-a4">
+                            <label for="${questionId}-a4">Correct</label>
+                        </div>
+                    </div>
+                    <p class="small-text">Check the box next to the correct answer(s)</p>
+                </div>
+
+                <div class="question-settings">
+                    <div class="form-group">
+                        <label>Time Limit (seconds)</label>
+                        <input type="number" class="time-limit" value="30" min="5" max="120">
+                    </div>
+                    <div class="form-group">
+                        <label>Points</label>
+                        <input type="number" class="points" value="100" min="10" max="1000" step="10">
+                    </div>
+                </div>
+            `;
+
+            questionsContainer.appendChild(questionCard);
+        }
+
+        function removeQuestion(questionId) {
+            if (confirm('Are you sure you want to remove this question?')) {
+                const questionCard = document.getElementById(questionId);
+                questionCard.remove();
+                
+                // Remove from questions array
+                const index = questions.findIndex(q => q.id === questionId);
+                if (index > -1) {
+                    questions.splice(index, 1);
+                }
+
+                // Renumber remaining questions
+                renumberQuestions();
+
+                // Show empty state if no questions
+                const questionsContainer = document.getElementById('questions-container');
+                if (questionsContainer.children.length === 0) {
+                    questionsContainer.innerHTML = `
+                        <div class="empty-state">
+                            <p>No questions yet. Click "Add Question" to start building your quiz!</p>
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        function renumberQuestions() {
+            const questionCards = document.querySelectorAll('.question-card');
+            questionCards.forEach((card, index) => {
+                const questionNumber = card.querySelector('.question-number');
+                questionNumber.textContent = `Question ${index + 1}`;
+            });
+        }
+
+        async function saveQuiz() {
+            const title = document.getElementById('quiz-title').value.trim();
+            const description = document.getElementById('quiz-description').value.trim();
+
+            // Validation
+            if (!title) {
+                showMessage('Please enter a quiz title', 'error');
+                return;
+            }
+
+            const questionCards = document.querySelectorAll('.question-card');
+            if (questionCards.length === 0) {
+                showMessage('Please add at least one question', 'error');
+                return;
+            }
+
+            // Collect questions data
+            const questionsData = [];
+            let isValid = true;
+
+            questionCards.forEach((card, index) => {
+                const questionText = card.querySelector('.question-text').value.trim();
+                const timeLimit = parseInt(card.querySelector('.time-limit').value);
+                const points = parseInt(card.querySelector('.points').value);
+                
+                if (!questionText) {
+                    showMessage(`Question ${index + 1} is missing text`, 'error');
+                    isValid = false;
+                    return;
+                }
+
+                // Collect answers
+                const answerItems = card.querySelectorAll('.answer-item');
+                const answers = [];
+                let hasCorrectAnswer = false;
+
+                answerItems.forEach((item, answerIndex) => {
+                    const answerText = item.querySelector('.answer-text').value.trim();
+                    const isCorrect = item.querySelector('.answer-correct').checked;
+
+                    if (answerText) {
+                        answers.push({
+                            answer_text: answerText,
+                            is_correct: isCorrect,
+                            answer_order: answerIndex + 1
+                        });
+
+                        if (isCorrect) hasCorrectAnswer = true;
+                    }
+                });
+
+                if (answers.length < 2) {
+                    showMessage(`Question ${index + 1} needs at least 2 answers`, 'error');
+                    isValid = false;
+                    return;
+                }
+
+                if (!hasCorrectAnswer) {
+                    showMessage(`Question ${index + 1} needs at least one correct answer`, 'error');
+                    isValid = false;
+                    return;
+                }
+
+                questionsData.push({
+                    question_text: questionText,
+                    question_order: index + 1,
+                    time_limit: timeLimit,
+                    points: points,
+                    answers: answers
+                });
+            });
+
+            if (!isValid) return;
+
+            try {
+                let quizId;
+
+                if (editingQuizId) {
+                    // Update existing quiz
+                    // Update quiz info
+                    const updateResponse = await fetch(`/api/quiz/${editingQuizId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            admin_id: adminId,
+                            title: title,
+                            description: description
+                        })
+                    });
+
+                    if (updateResponse.status === 403) {
+                        showMessage('You do not have permission to edit this quiz', 'error');
+                        return;
+                    }
+
+                    if (!updateResponse.ok) {
+                        showMessage('Failed to update quiz', 'error');
+                        return;
+                    }
+
+                    quizId = editingQuizId;
+                } else {
+                    // Create new quiz
+                    const quizResponse = await fetch('/api/quiz', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            admin_id: adminId,
+                            title: title,
+                            description: description
+                        })
+                    });
+
+                    const quizData = await quizResponse.json();
+
+                    if (!quizResponse.ok) {
+                        showMessage('Failed to create quiz', 'error');
+                        return;
+                    }
+
+                    quizId = quizData.quiz_id;
+                }
+
+                // If editing, delete all existing questions first
+                if (editingQuizId) {
+                    const deleteResponse = await fetch(`/api/quiz/${quizId}/questions?admin_id=${adminId}`, {
+                        method: 'DELETE'
+                    });
+
+                    if (!deleteResponse.ok) {
+                        showMessage('Failed to delete existing questions', 'error');
+                        return;
+                    }
+                }
+
+                // Add all questions (both new and modified ones)
+                for (const question of questionsData) {
+                    const questionResponse = await fetch(`/api/quiz/${quizId}/question`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            question_text: question.question_text,
+                            question_order: question.question_order,
+                            time_limit: question.time_limit,
+                            points: question.points,
+                            answers: question.answers,
+                            admin_id: adminId
+                        })
+                    });
+
+                    if (questionResponse.status === 403) {
+                        showMessage('You do not have permission to edit this quiz', 'error');
+                        return;
+                    }
+
+                    if (!questionResponse.ok) {
+                        showMessage('Failed to add questions', 'error');
+                        return;
+                    }
+                }
+
+                showMessage(editingQuizId ? 'Quiz updated successfully!' : 'Quiz created successfully!', 'success');
+                setTimeout(() => {
+                    window.location.href = '/admin/dashboard';
+                }, 1500);
+
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('Error saving quiz. Please try again.', 'error');
+            }
+        }
+
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = text;
+            messageDiv.className = `message ${type}`;
+            messageDiv.style.display = 'block';
+            
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            if (type === 'success') {
+                setTimeout(() => {
+                    messageDiv.style.display = 'none';
+                }, 3000);
+            }
+        }
+    </script>
+</body>
+</html>

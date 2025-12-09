@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Join Game - Kahoot-ish</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+        }
+
+        .container {
+            text-align: center;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 100%;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+
+        input {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.2em;
+            border: none;
+            border-radius: 10px;
+            text-align: center;
+            text-transform: uppercase;
+        }
+
+        input::placeholder {
+            text-transform: none;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.2em;
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+
+        .btn:hover {
+            background: #ff5252;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .message {
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .message.error {
+            background: rgba(255, 82, 82, 0.2);
+            border: 2px solid #ff5252;
+        }
+
+        .message.success {
+            background: rgba(76, 175, 80, 0.2);
+            border: 2px solid #4caf50;
+        }
+
+        .back-link {
+            margin-top: 30px;
+        }
+
+        .back-link a {
+            color: white;
+            text-decoration: none;
+            opacity: 0.8;
+            transition: opacity 0.3s;
+        }
+
+        .back-link a:hover {
+            opacity: 1;
+        }
+
+        .waiting-room {
+            display: none;
+        }
+
+        .waiting-room h2 {
+            margin-bottom: 20px;
+        }
+
+        .game-code-display {
+            font-size: 2em;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            letter-spacing: 5px;
+        }
+
+        .participants-list {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .participant-item {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .game-started-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .game-started-modal.show {
+            display: flex;
+        }
+
+        .game-started-content {
+            background: rgba(255, 255, 255, 0.95);
+            color: #333;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+        }
+
+        .game-started-content h2 {
+            font-size: 2em;
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+
+        .game-started-content p {
+            font-size: 1.1em;
+            margin-bottom: 30px;
+            color: #555;
+        }
+
+        .game-started-btn {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.2em;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .game-started-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Join Form -->
+        <div id="join-form-section">
+            <h1>🎮 Join Game</h1>
+            
+            <form id="join-form">
+                <div class="form-group">
+                    <label for="game-code">Game Code</label>
+                    <input type="text" id="game-code" placeholder="Enter 6-digit code" maxlength="6" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="nickname">Your Nickname</label>
+                    <input type="text" id="nickname" placeholder="Enter your name" maxlength="20" required>
+                </div>
+                
+                <button type="submit" class="btn" id="join-btn">Join Game</button>
+            </form>
+
+            <div id="message" class="message"></div>
+
+            <div class="back-link">
+                <a href="/">← Back to Home</a>
+            </div>
+        </div>
+
+        <!-- Waiting Room -->
+        <div id="waiting-room" class="waiting-room">
+            <h2>🎉 You're In!</h2>
+            <div class="game-code-display" id="game-code-display"></div>
+            <p style="margin-bottom: 20px;">Waiting for host to start the game...</p>
+            
+            <div class="spinner"></div>
+
+            <div class="participants-list" id="participants-list">
+                <h3 style="margin-bottom: 10px;">Players Joined:</h3>
+                <div id="participant-items"></div>
+            </div>
+        </div>
+
+        <!-- Game Started Modal (Fallback) -->
+        <div id="game-started-modal" class="game-started-modal">
+            <div class="game-started-content">
+                <h2>🎮 Game Started!</h2>
+                <p>The host has started the game. Click below to enter the game.</p>
+                <button id="join-game-btn" class="game-started-btn">Join Game</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        const joinForm = document.getElementById('join-form');
+        const joinFormSection = document.getElementById('join-form-section');
+        const waitingRoom = document.getElementById('waiting-room');
+        const messageDiv = document.getElementById('message');
+        const gameStartedModal = document.getElementById('game-started-modal');
+        const joinGameBtn = document.getElementById('join-game-btn');
+
+        // Listen for game start immediately
+        socket.on('game_started', () => {
+            console.log('[join_game.html] game_started event received!');
+            const code = localStorage.getItem('game_code');
+            console.log('[join_game.html] Attempting automatic redirect to /game/play/' + code);
+            
+            // Try automatic redirect first
+            setTimeout(() => {
+                window.location.href = `/game/play/${code}`;
+            }, 500);
+            
+            // Also show fallback button in case redirect doesn't work
+            setTimeout(() => {
+                if (window.location.pathname === '/game/join') {
+                    console.log('[join_game.html] Automatic redirect failed, showing fallback button');
+                    gameStartedModal.classList.add('show');
+                }
+            }, 1500);
+        });
+
+        // Handle fallback button click
+        joinGameBtn.addEventListener('click', () => {
+            const code = localStorage.getItem('game_code');
+            console.log('[join_game.html] User clicked fallback button, navigating to /game/play/' + code);
+            window.location.href = `/game/play/${code}`;
+        });
+
+        // Listen for successful join
+        socket.on('joined', (data) => {
+            console.log('[join_game.html] joined event received:', data);
+            localStorage.setItem('participant_id', data.participant_id);
+            
+            // Hide form, show waiting room
+            joinFormSection.style.display = 'none';
+            waitingRoom.style.display = 'block';
+            
+            const gameCode = localStorage.getItem('game_code');
+            document.getElementById('game-code-display').textContent = gameCode;
+            
+            // Join the socket room to receive game_started broadcast
+            console.log('[join_game.html] Joining socket room for game code:', gameCode);
+            socket.emit('join_room', { game_code: gameCode });
+        });
+
+        // Listen for errors
+        socket.on('error', (data) => {
+            console.log('[join_game.html] error event received:', data);
+            showMessage(data.message, 'error');
+        });
+
+        // Handle form submission
+        joinForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const gameCode = document.getElementById('game-code').value.toUpperCase();
+            const nickname = document.getElementById('nickname').value;
+
+            if (gameCode.length !== 6) {
+                showMessage('Game code must be 6 characters', 'error');
+                return;
+            }
+
+            if (nickname.trim() === '') {
+                showMessage('Please enter a nickname', 'error');
+                return;
+            }
+
+            // Store info in localStorage
+            localStorage.setItem('game_code', gameCode);
+            localStorage.setItem('nickname', nickname);
+
+            console.log('[join_game.html] Emitting join_game:', gameCode, nickname);
+            // Emit join game event
+            socket.emit('join_game', {
+                game_code: gameCode,
+                nickname: nickname
+            });
+        });
+
+        function showMessage(text, type) {
+            messageDiv.textContent = text;
+            messageDiv.className = `message ${type}`;
+            messageDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

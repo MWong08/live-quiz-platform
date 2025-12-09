@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Play Game - Kahoot-ish</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+
+        .game-header {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .player-info {
+            font-size: 1.1em;
+        }
+
+        .score-display {
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        /* Waiting Screen */
+        .waiting-screen {
+            text-align: center;
+            display: none;
+        }
+
+        .waiting-screen h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 30px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Question Screen */
+        .question-screen {
+            display: none;
+        }
+
+        .timer-bar {
+            background: rgba(255, 255, 255, 0.3);
+            height: 10px;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+
+        .timer-fill {
+            background: #ff6b6b;
+            height: 100%;
+            transition: width 0.1s linear;
+        }
+
+        .question-card {
+            background: white;
+            color: #333;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .question-number {
+            color: #667eea;
+            font-size: 1.1em;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .question-text {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .answers-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .answer-btn {
+            padding: 30px;
+            font-size: 1.2em;
+            border: 3px solid transparent;
+            border-radius: 15px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .answer-btn:hover:not(:disabled) {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+        }
+
+        .answer-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .answer-btn:nth-child(1) { background: #e74c3c; }
+        .answer-btn:nth-child(2) { background: #3498db; }
+        .answer-btn:nth-child(3) { background: #f39c12; }
+        .answer-btn:nth-child(4) { background: #2ecc71; }
+
+        .answer-btn.selected {
+            border: 5px solid white;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.6);
+            transform: scale(1.05);
+        }
+
+        .confirmation-section {
+            text-align: center;
+            display: none;
+            margin-top: 20px;
+        }
+
+        .confirmation-section.show {
+            display: block;
+        }
+
+        .selected-answer-display {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 1.1em;
+        }
+
+        .confirm-btn {
+            padding: 15px 50px;
+            font-size: 1.2em;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            background: #27ae60;
+            color: white;
+            transition: all 0.3s;
+            margin-right: 15px;
+        }
+
+        .confirm-btn:hover {
+            background: #229954;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .confirm-btn:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+        }
+
+        .cancel-btn {
+            padding: 15px 50px;
+            font-size: 1.2em;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            background: #e74c3c;
+            color: white;
+            transition: all 0.3s;
+        }
+
+        .cancel-btn:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .cancel-btn:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+        }
+
+        .answer-btn.correct {
+            background: #27ae60 !important;
+            animation: pulse 0.5s;
+        }
+
+        .answer-btn.incorrect {
+            background: #c0392b !important;
+            animation: shake 0.5s;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        /* Result Screen */
+        .result-screen {
+            text-align: center;
+            display: none;
+        }
+
+        .result-icon {
+            font-size: 5em;
+            margin-bottom: 20px;
+        }
+
+        .result-screen h2 {
+            font-size: 2.5em;
+            margin-bottom: 15px;
+        }
+
+        .points-earned {
+            font-size: 3em;
+            font-weight: bold;
+            margin: 20px 0;
+            color: #ffd700;
+        }
+
+        .result-message {
+            font-size: 1.3em;
+            margin-bottom: 30px;
+        }
+
+        /* Leaderboard Screen */
+        .leaderboard-screen {
+            display: none;
+        }
+
+        .leaderboard-screen h2 {
+            text-align: center;
+            font-size: 2.5em;
+            margin-bottom: 30px;
+        }
+
+        .leaderboard {
+            background: white;
+            color: #333;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .leaderboard-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            margin-bottom: 15px;
+            background: #f9f9f9;
+            border-radius: 10px;
+            transition: all 0.3s;
+        }
+
+        .leaderboard-item:hover {
+            transform: translateX(5px);
+            background: #f0f0f0;
+        }
+
+        .leaderboard-item.me {
+            background: #e3f2fd;
+            border: 2px solid #2196F3;
+        }
+
+        .leaderboard-item:nth-child(1) .rank {
+            background: #ffd700;
+            color: #333;
+        }
+
+        .leaderboard-item:nth-child(2) .rank {
+            background: #c0c0c0;
+            color: #333;
+        }
+
+        .leaderboard-item:nth-child(3) .rank {
+            background: #cd7f32;
+            color: white;
+        }
+
+        .rank {
+            background: #667eea;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+
+        .player-name {
+            flex: 1;
+            margin-left: 20px;
+            font-size: 1.2em;
+            font-weight: 500;
+        }
+
+        .player-score {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        /* Final Screen */
+        .final-screen {
+            text-align: center;
+            display: none;
+        }
+
+        .final-screen h1 {
+            font-size: 3em;
+            margin-bottom: 20px;
+        }
+
+        .final-rank {
+            font-size: 5em;
+            margin: 30px 0;
+        }
+
+        .final-score {
+            font-size: 2em;
+            margin-bottom: 40px;
+        }
+
+        .btn {
+            padding: 15px 40px;
+            font-size: 1.1em;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            background: white;
+            color: #667eea;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="game-header">
+        <div class="player-info">
+            <span id="player-nickname">Player</span>
+        </div>
+        <div class="score-display">
+            Score: <span id="current-score">0</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Waiting Screen -->
+        <div id="waiting-screen" class="waiting-screen">
+            <h1>🎮 Get Ready!</h1>
+            <p style="font-size: 1.3em;">Waiting for the game to start...</p>
+            <div class="spinner"></div>
+        </div>
+
+        <!-- Question Screen -->
+        <div id="question-screen" class="question-screen">
+            <div class="timer-bar">
+                <div class="timer-fill" id="timer-fill"></div>
+            </div>
+
+            <div class="question-card">
+                <div class="question-number" id="question-number">Question 1 of 5</div>
+                <div class="question-text" id="question-text">Loading question...</div>
+            </div>
+
+            <div class="answers-grid" id="answers-grid">
+                <!-- Answers will be dynamically added -->
+            </div>
+
+            <div class="confirmation-section" id="confirmation-section">
+                <div class="selected-answer-display" id="selected-answer-display">
+                    Selected Answer(s): <strong id="selected-answer-text">None</strong>
+                </div>
+                <button class="confirm-btn" id="confirm-btn" onclick="confirmAnswer()">Confirm Answers</button>
+                <button class="cancel-btn" id="cancel-btn" onclick="cancelAnswer()">Remove Selection</button>
+            </div>
+        </div>
+
+        <!-- Result Screen -->
+        <div id="result-screen" class="result-screen">
+            <div class="result-icon" id="result-icon">✅</div>
+            <h2 id="result-title">Correct!</h2>
+            <div class="points-earned">+<span id="points-earned">100</span></div>
+            <p class="result-message" id="result-message">Great job!</p>
+        </div>
+
+        <!-- Leaderboard Screen -->
+        <div id="leaderboard-screen" class="leaderboard-screen">
+            <h2>🏆 Leaderboard</h2>
+            <div class="leaderboard" id="leaderboard">
+                <!-- Leaderboard items will be dynamically added -->
+            </div>
+        </div>
+
+        <!-- Final Screen -->
+        <div id="final-screen" class="final-screen">
+            <h1>🎉 Game Over!</h1>
+            <div class="final-rank" id="final-rank">🥇</div>
+            <div class="final-score">
+                Final Score: <span id="final-score">0</span>
+            </div>
+            <a href="/" class="btn">Play Another Game</a>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        
+        // Get player info from localStorage
+        const gameCode = localStorage.getItem('game_code');
+        const nickname = localStorage.getItem('nickname');
+        const participantId = localStorage.getItem('participant_id');
+
+        let currentScore = 0;
+        let currentQuestion = null;
+        let timerInterval = null;
+        let selectedAnswers = [];  // Changed to array for multiple selections
+
+        // Initialize
+        document.getElementById('player-nickname').textContent = nickname;
+        showScreen('waiting-screen');
+
+        console.log('[play_game.html] Joining socket room for game code:', gameCode);
+        // Join the game room immediately to receive broadcasts
+        socket.emit('join_room', { game_code: gameCode }, (ack) => {
+            console.log('[play_game.html] Successfully joined room');
+        });
+
+        // Listen for game start
+        socket.on('game_started', (data) => {
+            console.log('[play_game.html] Game started event received!');
+        });
+
+        // Listen for new question
+        socket.on('show_question', (data) => {
+            console.log('[play_game.html] show_question event received:', data);
+            currentQuestion = data;
+            selectedAnswers = [];  // Reset selected answers
+            clearInterval(timerInterval);  // Clear any existing timer
+            displayQuestion(data);
+            startTimer(data.time_limit);
+            showScreen('question-screen');
+        });
+
+        // Listen for answer results
+        socket.on('answer_result', (data) => {
+            clearInterval(timerInterval);
+            showResult(data);
+        });
+
+        // Listen for leaderboard
+        socket.on('show_leaderboard', (data) => {
+            displayLeaderboard(data.leaderboard);
+            showScreen('leaderboard-screen');
+        });
+
+        // Listen for game end
+        socket.on('game_ended', (data) => {
+            displayFinalResults(data);
+            showScreen('final-screen');
+        });
+
+        function displayQuestion(data) {
+            console.log('[play_game.html] displayQuestion called with data:', data);
+            document.getElementById('question-number').textContent = 
+                `Question ${data.question_number} of ${data.total_questions}`;
+            document.getElementById('question-text').textContent = data.question_text;
+
+            const answersGrid = document.getElementById('answers-grid');
+            answersGrid.innerHTML = '';
+
+            if (!data.answers || data.answers.length === 0) {
+                console.error('[play_game.html] No answers provided in question data');
+                answersGrid.innerHTML = '<p>Error loading answers</p>';
+                return;
+            }
+
+            data.answers.forEach((answer, index) => {
+                console.log(`[play_game.html] Creating button for answer ${index}:`, answer);
+                const btn = document.createElement('button');
+                btn.className = 'answer-btn';
+                btn.textContent = answer.answer_text;
+                btn.type = 'button';
+                btn.disabled = false;  // Explicitly enable the button
+                // Store answer ID as data attribute for reference
+                btn.dataset.answerId = answer.answer_id;
+                btn.onclick = (event) => {
+                    console.log('[play_game.html] Answer button clicked:', answer.answer_id, answer.answer_text);
+                    toggleAnswer(answer.answer_id, answer.answer_text, btn);
+                };
+                answersGrid.appendChild(btn);
+            });
+
+            // Reset selected answers and re-enable buttons
+            selectedAnswers = [];
+            // Hide confirmation section for new question
+            document.getElementById('confirmation-section').classList.remove('show');
+            document.getElementById('confirm-btn').disabled = false;
+            document.getElementById('cancel-btn').disabled = false;
+            console.log('[play_game.html] Question displayed successfully');
+        }
+
+        function toggleAnswer(answerId, answerText, button) {
+            console.log('[play_game.html] toggleAnswer called:', answerId, answerText);
+            
+            // Toggle selection
+            const index = selectedAnswers.findIndex(a => a.id === answerId);
+            if (index > -1) {
+                // Already selected, remove it
+                console.log('[play_game.html] Deselecting answer:', answerId);
+                selectedAnswers.splice(index, 1);
+                button.classList.remove('selected');
+            } else {
+                // Not selected, add it
+                console.log('[play_game.html] Selecting answer:', answerId);
+                selectedAnswers.push({ id: answerId, text: answerText });
+                button.classList.add('selected');
+            }
+
+            console.log('[play_game.html] Current selected answers:', selectedAnswers);
+
+            // Update display
+            if (selectedAnswers.length > 0) {
+                const answerTexts = selectedAnswers.map(a => a.text).join(', ');
+                document.getElementById('selected-answer-text').textContent = answerTexts;
+                document.getElementById('confirmation-section').classList.add('show');
+                console.log('[play_game.html] Showing confirmation section with:', answerTexts);
+            } else {
+                document.getElementById('confirmation-section').classList.remove('show');
+                console.log('[play_game.html] Hiding confirmation section - no answers selected');
+            }
+        }
+
+        function cancelAnswer() {
+            selectedAnswers = [];
+            const buttons = document.querySelectorAll('.answer-btn');
+            buttons.forEach(btn => btn.classList.remove('selected'));
+            document.getElementById('confirmation-section').classList.remove('show');
+        }
+
+        function confirmAnswer() {
+            console.log('[play_game.html] confirmAnswer called, selectedAnswers:', selectedAnswers);
+            
+            if (selectedAnswers.length === 0) {
+                console.log('[play_game.html] No answers selected, returning');
+                return;
+            }
+            
+            if (!currentQuestion) {
+                console.log('[play_game.html] No current question, returning');
+                return;
+            }
+
+            console.log('[play_game.html] Confirming answers:', selectedAnswers);
+
+            // Disable all buttons
+            const buttons = document.querySelectorAll('.answer-btn');
+            buttons.forEach(btn => btn.disabled = true);
+
+            // Disable confirmation buttons
+            document.getElementById('confirm-btn').disabled = true;
+            document.getElementById('cancel-btn').disabled = true;
+
+            // Stop timer
+            clearInterval(timerInterval);
+            const timerFill = document.getElementById('timer-fill');
+            const timerWidthPercent = timerFill.style.width.replace('%', '');
+            const timeTaken = currentQuestion.time_limit - Math.floor(
+                (parseFloat(timerWidthPercent) / 100) * currentQuestion.time_limit
+            );
+
+            // Calculate points (faster answer = more points)
+            const timePercentage = timeTaken / currentQuestion.time_limit;
+            const basePoints = currentQuestion.points;
+            const pointsEarned = Math.floor(basePoints * (1 - timePercentage * 0.5));
+
+            console.log('[play_game.html] Time taken:', timeTaken, 'Points earned:', pointsEarned);
+
+            // Send all selected answers to server
+            socket.emit('submit_answer', {
+                participant_id: participantId,
+                question_id: currentQuestion.question_id,
+                answer_ids: selectedAnswers.map(a => a.id),  // Send array of answer IDs
+                time_taken: timeTaken,
+                points_earned: pointsEarned
+            });
+
+            console.log('[play_game.html] Emitted submit_answer to server');
+
+            // Show correct/incorrect immediately
+            setTimeout(() => {
+                const correctAnswers = currentQuestion.answers.filter(a => a.is_correct);
+                const correctAnswerIds = correctAnswers.map(a => a.answer_id);
+                const selectedAnswerIds = selectedAnswers.map(a => a.id);
+
+                console.log('[play_game.html] Correct answer IDs:', correctAnswerIds);
+                console.log('[play_game.html] Selected answer IDs:', selectedAnswerIds);
+
+                buttons.forEach((btn, index) => {
+                    const answerId = currentQuestion.answers[index].answer_id;
+                    if (correctAnswerIds.includes(answerId)) {
+                        btn.classList.add('correct');
+                    } else if (selectedAnswerIds.includes(answerId)) {
+                        btn.classList.add('incorrect');
+                    }
+                });
+
+                // Check if all selected answers are correct
+                const isCorrect = selectedAnswerIds.length === correctAnswerIds.length &&
+                                 selectedAnswerIds.every(id => correctAnswerIds.includes(id));
+
+                console.log('[play_game.html] Is answer correct?:', isCorrect);
+
+                // Update score and show result
+                if (isCorrect) {
+                    currentScore += pointsEarned;
+                    document.getElementById('current-score').textContent = currentScore;
+                }
+
+                setTimeout(() => {
+                    showResult({
+                        correct: isCorrect,
+                        points_earned: isCorrect ? pointsEarned : 0,
+                        correct_answer: correctAnswers.map(a => a.answer_text).join(', ')
+                    });
+                }, 1500);
+            }, 100);
+        }
+
+        function startTimer(timeLimit) {
+            const timerFill = document.getElementById('timer-fill');
+            timerFill.style.width = '100%';
+            
+            let timeLeft = timeLimit;
+            timerInterval = setInterval(() => {
+                timeLeft -= 0.1;
+                const percentage = (timeLeft / timeLimit) * 100;
+                timerFill.style.width = percentage + '%';
+
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    if (selectedAnswers.length === 0) {
+                        // Time's up - disable all buttons
+                        const buttons = document.querySelectorAll('.answer-btn');
+                        buttons.forEach(btn => btn.disabled = true);
+                        
+                        showResult({
+                            correct: false,
+                            points_earned: 0,
+                            correct_answer: 'Time is up!'
+                        });
+                    }
+                }
+            }, 100);
+        }
+
+        function showResult(data) {
+            const resultIcon = document.getElementById('result-icon');
+            const resultTitle = document.getElementById('result-title');
+            const pointsEarned = document.getElementById('points-earned');
+            const resultMessage = document.getElementById('result-message');
+
+            if (data.correct) {
+                resultIcon.textContent = '✅';
+                resultTitle.textContent = 'Correct!';
+                pointsEarned.textContent = data.points_earned;
+                resultMessage.textContent = 'Great job! Keep it up!';
+            } else {
+                resultIcon.textContent = '❌';
+                resultTitle.textContent = 'Incorrect';
+                pointsEarned.textContent = '0';
+                resultMessage.textContent = `Correct answer: ${data.correct_answer}`;
+            }
+
+            showScreen('result-screen');
+        }
+
+        function displayLeaderboard(leaderboard) {
+            const leaderboardDiv = document.getElementById('leaderboard');
+            leaderboardDiv.innerHTML = '';
+
+            leaderboard.forEach((player, index) => {
+                const item = document.createElement('div');
+                item.className = 'leaderboard-item';
+                if (player.participant_id === parseInt(participantId)) {
+                    item.classList.add('me');
+                }
+
+                item.innerHTML = `
+                    <div class="rank">${index + 1}</div>
+                    <div class="player-name">${player.nickname}</div>
+                    <div class="player-score">${player.total_score}</div>
+                `;
+
+                leaderboardDiv.appendChild(item);
+            });
+        }
+
+        function displayFinalResults(data) {
+            const myResult = data.leaderboard.find(p => p.participant_id === parseInt(participantId));
+            const rank = data.leaderboard.indexOf(myResult) + 1;
+
+            const rankEmojis = ['🥇', '🥈', '🥉'];
+            document.getElementById('final-rank').textContent = rankEmojis[rank - 1] || '🎯';
+            document.getElementById('final-score').textContent = myResult.total_score;
+        }
+
+        function showScreen(screenId) {
+            const screens = ['waiting-screen', 'question-screen', 'result-screen', 'leaderboard-screen', 'final-screen'];
+            screens.forEach(id => {
+                document.getElementById(id).style.display = 'none';
+            });
+            document.getElementById(screenId).style.display = 'block';
+        }
+    </script>
+</body>
+</html>
