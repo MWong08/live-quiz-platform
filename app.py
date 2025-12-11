@@ -533,24 +533,7 @@ def handle_submit_answer(data):
     # Handle both single answer (backwards compatibility) and multiple answers
     answer_ids = data.get('answer_ids', [data['answer_id']] if 'answer_id' in data else [])
     
-    # Create participant answers for each selected answer
-    for answer_id in answer_ids:
-        participant_answer = ParticipantAnswer(
-            participant_id=data['participant_id'],
-            question_id=data['question_id'],
-            answer_id=answer_id,
-            time_taken=data['time_taken'],
-            points_earned=data['points_earned']
-        )
-        db.session.add(participant_answer)
-    
-    # Update participant total score
-    participant = Participant.query.get(data['participant_id'])
-    participant.total_score += data['points_earned']
-    
-    db.session.commit()
-    
-    # Check if all answers are correct
+    # Check if all answers are correct BEFORE updating scores
     question = Question.query.get(data['question_id'])
     correct_answers = Answer.query.filter_by(question_id=data['question_id'], is_correct=True).all()
     correct_answer_ids = set(a.answer_id for a in correct_answers)
@@ -558,6 +541,26 @@ def handle_submit_answer(data):
     
     # Answers are correct if the selected set exactly matches the correct set
     is_correct = selected_answer_ids == correct_answer_ids
+    
+    # Only award points if the answer is correct
+    points_to_award = data['points_earned'] if is_correct else 0
+    
+    # Create participant answers for each selected answer
+    for answer_id in answer_ids:
+        participant_answer = ParticipantAnswer(
+            participant_id=data['participant_id'],
+            question_id=data['question_id'],
+            answer_id=answer_id,
+            time_taken=data['time_taken'],
+            points_earned=points_to_award
+        )
+        db.session.add(participant_answer)
+    
+    # Update participant total score (only with correct answer points)
+    participant = Participant.query.get(data['participant_id'])
+    participant.total_score += points_to_award
+    
+    db.session.commit()
     
     # Notify host
     game_session = GameSession.query.join(Participant).filter(

@@ -143,7 +143,7 @@
         .answer-btn:nth-child(1) { background: #e74c3c; }
         .answer-btn:nth-child(2) { background: #3498db; }
         .answer-btn:nth-child(3) { background: #f39c12; }
-        .answer-btn:nth-child(4) { background: #2ecc71; }
+        .answer-btn:nth-child(4) { background: #e91e63; }
 
         .answer-btn.selected {
             border: 5px solid white;
@@ -180,6 +180,7 @@
             color: white;
             transition: all 0.3s;
             margin-right: 15px;
+            margin-bottom: 10px;
         }
 
         .confirm-btn:hover {
@@ -203,6 +204,7 @@
             background: #e74c3c;
             color: white;
             transition: all 0.3s;
+            margin-bottom: 10px;
         }
 
         .cancel-btn:hover {
@@ -214,6 +216,15 @@
         .cancel-btn:disabled {
             background: #95a5a6;
             cursor: not-allowed;
+        }
+
+        @media (max-width: 600px) {
+            .confirm-btn, .cancel-btn {
+                display: block;
+                width: 100%;
+                margin-right: 0;
+                margin-bottom: 10px;
+            }
         }
 
         .answer-btn.correct {
