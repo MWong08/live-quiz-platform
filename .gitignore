@@ -2,4 +2,6 @@
 *.pyc
 *.pyo
 
+/venv
+
 z_notes.txt
